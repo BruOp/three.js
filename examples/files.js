@@ -270,7 +270,8 @@ var files = {
 		"webgl_postprocessing_ssao",
 		"webgl_postprocessing_taa",
 		"webgl_postprocessing_unreal_bloom",
-		"webgl_postprocessing_unreal_bloom_selective"
+		"webgl_postprocessing_unreal_bloom_selective",
+		"webgl_postprocessing_shader_recompilation_bug"
 	],
 	"webgl / advanced": [
 		"webgl_buffergeometry",

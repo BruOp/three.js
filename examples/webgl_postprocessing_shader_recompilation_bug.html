@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<title>three.js WebGL - postprocessing - FXAA</title>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+	<link type="text/css" rel="stylesheet" href="main.css" />
+	<style>
+		body {
+			background-color: #fff;
+			color: #222;
+		}
+
+		a {
+			color: #08f;
+		}
+
+		#container {
+			position: absolute;
+			top: 80px;
+			width: 100%;
+			bottom: 0px;
+		}
+
+	</style>
+</head>
+
+<body>
+	<div id="info">
+		<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>
+		- postprocessing - Shader Recompilation Bug<br />
+		Left scene rendered with renderer.render(), bottom right scene is rendered with
+		EffectComposer composer.render().
+	</div>
+	<div id="container"></div>
+
+	<script type="module">
+		import * as THREE from "../build/three.module.js";
+
+		import { GUI } from "./jsm/libs/dat.gui.module.js";
+		import { EffectComposer } from "./jsm/postprocessing/EffectComposer.js";
+		import { RenderPass } from "./jsm/postprocessing/RenderPass.js";
+		import { SSAARenderPass } from "./jsm/postprocessing/SSAARenderPass.js";
+		import { ShaderPass } from "./jsm/postprocessing/ShaderPass.js";
+		import { SSAOPass } from "./jsm/postprocessing/SSAOPass.js";
+		import { GammaCorrectionShader } from "./jsm/shaders/GammaCorrectionShader.js";
+		import { CopyShader } from "./jsm/shaders/CopyShader.js";
+		import { FXAAShader } from "./jsm/shaders/FXAAShader.js";
+
+		var camera, composerCamera, scene, renderer, clock, group, container;
+
+		var composer, fxaaPass;
+
+		init();
+		animate();
+
+		function init() {
+
+			container = document.getElementById( "container" );
+
+			camera = new THREE.PerspectiveCamera(
+				45,
+				container.offsetWidth / container.offsetHeight,
+				1,
+				2000
+			);
+			camera.position.z = 500;
+			// Same position
+			composerCamera = new THREE.PerspectiveCamera(
+				45,
+				container.offsetWidth / container.offsetHeight,
+				1,
+				2000
+			);
+			composerCamera.position.z = 500;
+
+			scene = new THREE.Scene();
+			scene.background = new THREE.Color( 0x002f2f );
+			
+			clock = new THREE.Clock();
+
+			//
+			
+			var dirLight = new THREE.DirectionalLight( 0xffffff, 0.8 );
+			dirLight.position.set( - 3000, 1000, - 1000 );
+			scene.add( dirLight );
+
+			//
+
+			group = new THREE.Group();
+
+			var geometry = new THREE.TetrahedronBufferGeometry( 10 );
+			var material = new THREE.MeshStandardMaterial( {
+				color: 0xee0808,
+				flatShading: true,
+			} );
+
+			var radius = 300;
+
+			for ( var i = 0; i < 50; i ++ ) {
+
+				var mesh = new THREE.Mesh( geometry, material );
+
+				mesh.position.x = Math.random() * 2 * radius - radius;
+				mesh.position.y = Math.random() * 2 * radius - radius;
+				mesh.position.z = Math.random() * 2 * radius - radius;
+
+				mesh.scale.setScalar( Math.random() * 2 + 1 );
+
+				mesh.rotation.x = Math.random() * Math.PI;
+				mesh.rotation.y = Math.random() * Math.PI;
+				mesh.rotation.z = Math.random() * Math.PI;
+
+				group.add( mesh );
+		
+	}
+
+			scene.add( group );
+
+			//
+
+			renderer = new THREE.WebGLRenderer( {
+				antialias: true,
+				alpha: true,
+				preserveDrawingBuffer: true,
+			} );
+			renderer.autoClear = false;
+			renderer.outputEncoding = THREE.sRGBEncoding;
+			renderer.toneMapping = THREE.LinearToneMapping;
+			renderer.toneMappingExposure = 1;
+			var pixelRatio = renderer.getPixelRatio();
+
+			renderer.setSize( container.offsetWidth, container.offsetHeight );
+			container.appendChild( renderer.domElement );
+
+			//
+			var renderPass = new RenderPass( scene, composerCamera );
+			fxaaPass = new ShaderPass( FXAAShader );
+
+
+			fxaaPass.material.uniforms[ "resolution" ].value.x =
+					1 / ( container.offsetWidth * pixelRatio );
+			fxaaPass.material.uniforms[ "resolution" ].value.y =
+					1 / ( container.offsetHeight * pixelRatio );
+
+			composer = new EffectComposer( renderer );
+			composer.addPass( renderPass );
+			composer.addPass( fxaaPass );
+
+			// Init gui
+			var gui = new GUI();
+
+			window.addEventListener( "resize", onWindowResize, false );
+		}
+
+		function onWindowResize() {
+
+			camera.aspect = container.offsetWidth / container.offsetHeight;
+			camera.updateProjectionMatrix();
+			composerCamera.aspect = container.offsetWidth / container.offsetHeight;
+			composerCamera.updateProjectionMatrix();
+
+			renderer.setSize( container.offsetWidth, container.offsetHeight );
+			composer.setSize( container.offsetWidth, container.offsetHeight );
+
+			var pixelRatio = renderer.getPixelRatio();
+
+			fxaaPass.material.uniforms[ "resolution" ].value.x =
+					1 / ( container.offsetWidth * pixelRatio );
+			fxaaPass.material.uniforms[ "resolution" ].value.y =
+					1 / ( container.offsetHeight * pixelRatio );
+		}
+
+		function animate() {
+
+			requestAnimationFrame( animate );
+
+			var halfWidth = container.offsetWidth / 2;
+
+			group.rotation.y += clock.getDelta() * 0.2;
+
+			renderer.setViewport(
+				0,
+				0,
+				container.offsetWidth,
+				container.offsetHeight
+			);
+
+			renderer.render( scene, camera );
+
+			renderer.setViewport(
+				halfWidth,
+				0,
+				halfWidth,
+				0.5 * container.offsetHeight
+			);
+
+			composer.render();
+		}
+		</script>
+</body>
+
+</html>
